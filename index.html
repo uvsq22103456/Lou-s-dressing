@@ -3,156 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>LOU'S DRESSING</title>
+    <title>GIRLS MOOD</title>
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
-        :root { --bg: #020617; --primary: #ec4899; }
-        body { font-family: 'Outfit', sans-serif; background-color: var(--bg); color: #f1f5f9; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
-        .view-container { flex: 1; overflow-y: auto; padding-bottom: 120px; }
-        .glass { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .card { background: linear-gradient(145deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; }
-        .nav-active { color: var(--primary); transform: translateY(-5px); }
-        .category-chip { padding: 8px 16px; border-radius: 99px; background: rgba(255,255,255,0.05); font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
-        .chip-active { background: var(--primary); color: #000; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        :root { --bg: #0f172a; --primary: #f472b6; --bubble-me: #ec4899; --bubble-her: #334155; }
+        body { font-family: 'Outfit', sans-serif; background: var(--bg); color: white; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.05); }
+        .input-style { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); width: 100%; padding: 12px; border-radius: 12px; color: white; outline: none; }
+        .btn-primary { background: var(--primary); color: black; font-weight: 800; padding: 12px; border-radius: 12px; text-transform: uppercase; width: 100%; }
+        
+        .chat-bubble { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 13px; margin-bottom: 8px; }
+        .me { background: var(--bubble-me); align-self: flex-end; border-bottom-right-radius: 2px; color: white; }
+        .her { background: var(--bubble-her); align-self: flex-start; border-bottom-left-radius: 2px; color: #cbd5e1; }
+        
+        .nav-btn { opacity: 0.4; transition: 0.3s; display: flex; flex-direction: column; items-center; }
+        .nav-active { opacity: 1; color: var(--primary); transform: translateY(-2px); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
-    <header class="glass sticky top-0 z-40 p-6 pb-4">
-        <h1 class="text-xl font-black uppercase italic">Lou's Dressing <span class="text-pink-500">.</span></h1>
-        <div class="flex gap-2 overflow-x-auto py-2 no-scrollbar" id="filter-bar">
-            <button onclick="filterItems('all')" class="category-chip chip-active">Tout</button>
-            <button onclick="filterItems('Hauts')" class="category-chip">Hauts</button>
-            <button onclick="filterItems('Bas')" class="category-chip">Bas</button>
-            <button onclick="filterItems('Robes')" class="category-chip">Robes</button>
-            <button onclick="filterItems('Ensembles')" class="category-chip">Ensembles</button>
-            <button onclick="filterItems('Chaussures')" class="category-chip">Chaussures</button>
-            <button onclick="filterItems('Sacs')" class="category-chip">Sacs</button>
-            <button onclick="filterItems('Accessoires')" class="category-chip">Accessoires</button>
+    <section id="auth-view" class="flex flex-col justify-center px-8 h-full space-y-6 z-50 bg-slate-900 absolute inset-0">
+        <div class="text-center">
+            <h1 class="text-5xl font-black italic tracking-tighter">GIRLS<span class="text-pink-500">MOOD</span>.</h1>
+            <p class="text-xs opacity-50 mt-2 uppercase tracking-widest">Le QG des copines</p>
         </div>
-    </header>
+        <div class="space-y-3">
+            <input type="email" id="email" placeholder="Email" class="input-style">
+            <input type="password" id="password" placeholder="Mot de passe" class="input-style">
+            <button onclick="login()" class="btn-primary">Entrer</button>
+            <button onclick="register()" class="text-xs text-center w-full opacity-50 underline mt-4">Créer un compte</button>
+        </div>
+    </section>
 
-    <main class="view-container p-5">
-        <section id="view-closet" class="grid grid-cols-2 gap-4"></section>
-
-        <section id="view-add" class="hidden space-y-6">
-            <div class="card p-6 space-y-5">
-                <div id="drop-zone" onclick="document.getElementById('file-input').click()" class="w-full h-64 border-dashed border-2 border-white/10 rounded-3xl flex items-center justify-center overflow-hidden">
-                    <input type="file" id="file-input" class="hidden" accept="image/*" onchange="previewImage(event)">
-                    <img id="img-preview" class="hidden w-full h-full object-cover">
-                    <div id="placeholder" class="text-center opacity-40 uppercase font-bold text-[10px]">Clique pour ajouter une photo</div>
-                </div>
-                <input type="text" id="item-name" placeholder="NOM DE L'ARTICLE" class="w-full p-4 bg-black/30 border border-white/10 rounded-xl text-xs font-bold uppercase">
-                <select id="item-category" class="w-full p-4 bg-black/30 border border-white/10 rounded-xl text-xs font-bold uppercase">
-                    <option value="Hauts">👕 Hauts</option>
-                    <option value="Bas">👖 Bas</option>
-                    <option value="Robes">👗 Robes</option>
-                    <option value="Ensembles">👯 Ensembles</option>
-                    <option value="Chaussures">👟 Chaussures</option>
-                    <option value="Sacs">👜 Sacs</option>
-                    <option value="Accessoires">💍 Accessoires</option>
-                </select>
-                <button onclick="uploadItem()" id="btn-save" class="w-full py-5 rounded-2xl font-black bg-pink-500 text-black uppercase text-xs">Enregistrer</button>
+    <div id="app-view" class="hidden flex-col h-full relative">
+        
+        <header class="p-5 flex justify-between items-center glass z-10">
+            <h2 class="text-lg font-black italic tracking-tighter">GIRLS<span class="text-pink-500">MOOD</span></h2>
+            <div class="flex gap-3 items-center">
+                <button onclick="document.getElementById('modal-help').classList.remove('hidden')" class="w-6 h-6 rounded-full border border-white/20 text-[10px] font-bold">?</button>
+                <button onclick="auth.signOut()" class="text-[9px] bg-white/10 px-3 py-1 rounded-full uppercase font-bold">Sortir</button>
             </div>
-        </section>
-    </main>
+        </header>
 
-    <nav class="glass fixed bottom-0 w-full grid grid-cols-2 py-4">
-        <button onclick="nav('closet', this)" class="flex flex-col items-center nav-active font-black text-[10px] uppercase">👗 Dressing</button>
-        <button onclick="nav('add', this)" class="flex flex-col items-center opacity-40 font-black text-[10px] uppercase">➕ Ajouter</button>
-    </nav>
+        <main class="flex-1 overflow-hidden relative">
+            
+            <section id="tab-events" class="h-full overflow-y-auto p-4 space-y-4 pb-24 hide-scrollbar">
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/5 flex gap-2">
+                    <input type="text" id="event-name" placeholder="Nouvel événement..." class="input-style text-xs">
+                    <button onclick="createEvent()" class="bg-pink-500 text-black font-bold px-4 rounded-xl">+</button>
+                </div>
+                <div id="events-list" class="space-y-3"></div>
+            </section>
+
+            <section id="tab-chat" class="hidden h-full flex flex-col pb-20">
+                <div id="chat-box" class="flex-1 overflow-y-auto p-4 flex flex-col hide-scrollbar"></div>
+                <div class="p-3 glass flex gap-2">
+                    <input type="text" id="msg-input" placeholder="Papoter..." class="input-style rounded-full px-5 text-sm">
+                    <button onclick="sendMsg()" class="bg-pink-500 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg">➤</button>
+                </div>
+            </section>
+
+            <section id="tab-history" class="hidden h-full overflow-y-auto p-4 pb-24 hide-scrollbar">
+                <h3 class="text-xs font-black uppercase opacity-40 mb-4 ml-2">Nos Archives</h3>
+                <div id="history-list" class="space-y-3 opacity-70 grayscale hover:grayscale-0 transition duration-500"></div>
+            </section>
+        </main>
+
+        <nav class="glass fixed bottom-0 w-full grid grid-cols-3 py-4 z-20 pb-8">
+            <button onclick="switchTab('events', this)" class="nav-btn nav-active">
+                <span class="text-xl mb-1">📅</span><span class="text-[9px] font-black uppercase">Events</span>
+            </button>
+            <button onclick="switchTab('chat', this)" class="nav-btn">
+                <span class="text-xl mb-1">💬</span><span class="text-[9px] font-black uppercase">Blabla</span>
+            </button>
+            <button onclick="switchTab('history', this)" class="nav-btn">
+                <span class="text-xl mb-1">🕰️</span><span class="text-[9px] font-black uppercase">Souvenirs</span>
+            </button>
+        </nav>
+    </div>
+
+    <div id="modal-help" class="hidden fixed inset-0 z-50 bg-black/95 flex flex-col p-6 justify-center">
+        <div class="bg-slate-900 border border-white/10 p-6 rounded-3xl space-y-4 relative">
+            <button onclick="document.getElementById('modal-help').classList.add('hidden')" class="absolute top-4 right-4 text-xl">✕</button>
+            <h2 class="text-xl font-black italic text-pink-500 mb-4">MODE D'EMPLOI ✨</h2>
+            
+            <div class="space-y-4 text-xs opacity-80 leading-relaxed">
+                <div>
+                    <h3 class="font-bold text-white uppercase mb-1">📸 Comment mettre une photo ?</h3>
+                    <p>On n'utilise pas le stockage du téléphone (ça bug). On utilise des liens !</p>
+                    <ul class="list-disc ml-4 mt-2 space-y-1">
+                        <li>Va sur <b>Pinterest</b> ou Google Images.</li>
+                        <li>Fais un <b>Appui Long</b> sur l'image.</li>
+                        <li>Choisis <b class="text-pink-400">"Copier l'adresse de l'image"</b>.</li>
+                        <li>Colle le lien ici !</li>
+                    </ul>
+                    <p class="mt-2 text-[10px] italic opacity-50">⚠️ Ne copie pas le lien de la page web (la barre d'adresse), ça ne marchera pas.</p>
+                </div>
+                
+                <hr class="border-white/10">
+                
+                <div>
+                    <h3 class="font-bold text-white uppercase mb-1">🕰️ C'est quoi les Souvenirs ?</h3>
+                    <p>Quand une soirée est finie, tu peux cliquer sur <b>"Archiver"</b> dans l'événement. Il ira dans l'onglet Souvenirs pour garder une trace !</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('modal-help').classList.add('hidden')" class="btn-primary mt-4">J'ai compris !</button>
+        </div>
+    </div>
+
+    <div id="modal-event" class="hidden fixed inset-0 z-50 bg-black/95 flex flex-col">
+        <div class="p-4 flex justify-between items-center glass">
+            <h2 id="modal-title" class="text-xl font-black italic text-pink-500">Titre</h2>
+            <button onclick="closeModal()" class="text-2xl">✕</button>
+        </div>
+        <div class="p-4 border-b border-white/10 bg-slate-900">
+            <div class="flex gap-2">
+                <input type="text" id="inspo-link" placeholder="Colle le lien de l'image ici..." class="input-style text-xs">
+                <button onclick="addInspo()" class="bg-white text-black font-bold px-4 rounded-xl text-[10px] uppercase">Ajouter</button>
+            </div>
+            <div class="flex justify-between items-center mt-2">
+                <button onclick="document.getElementById('modal-help').classList.remove('hidden')" class="text-[9px] underline opacity-50">Comment faire ?</button>
+                <button onclick="archiveEvent()" class="text-[9px] text-red-400 border border-red-400/30 px-2 py-1 rounded">Archiver</button>
+            </div>
+        </div>
+        <div id="inspo-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 pb-10"></div>
+    </div>
 
     <script>
+        // --- CONFIG FIREBASE ---
         const firebaseConfig = {
-          apiKey: "AIzaSyBIHjJKZj_Bqw1XjHfJo4X3GWrA6GNLU8I",
-          authDomain: "bu-buddy-4bafe.firebaseapp.com",
-          projectId: "bu-buddy-4bafe",
-          storageBucket: "bu-buddy-4bafe.firebasestorage.app",
-          messagingSenderId: "1083707246516",
-          appId: "1:1083707246516:web:c6c78c199c7eb9323554e1"
+            apiKey: "AIzaSyBIHjJKZj_Bqw1XjHfJo4X3GWrA6GNLU8I",
+            authDomain: "bu-buddy-4bafe.firebaseapp.com",
+            projectId: "bu-buddy-4bafe",
+            storageBucket: "bu-buddy-4bafe.firebasestorage.app",
+            messagingSenderId: "1083707246516",
+            appId: "1:1083707246516:web:c6c78c199c7eb9323554e1"
         };
         firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const db = firebase.firestore();
-        let base64Image = "";
-        let currentFilter = "all";
+        let currentUser = null;
+        let currentEventId = null;
 
-        function nav(view, btn) {
-            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-            document.getElementById('view-' + view).classList.remove('hidden');
-            document.querySelectorAll('nav button').forEach(b => b.classList.add('opacity-40'));
-            btn.classList.remove('opacity-40');
-        }
-
-        function previewImage(event) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                base64Image = reader.result;
-                document.getElementById('img-preview').src = base64Image;
-                document.getElementById('img-preview').classList.remove('hidden');
-                document.getElementById('placeholder').classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        async function uploadItem() {
-            const name = document.getElementById('item-name').value;
-            const category = document.getElementById('item-category').value;
-            if(!name || !base64Image) return alert("Photo et nom requis !");
-            
-            document.getElementById('btn-save').innerText = "Mise en ligne...";
-            await db.collection("clothes").add({
-                name: name, category: category, image: base64Image, date: Date.now()
-            });
-            location.reload();
-        }
-
-        function filterItems(cat) {
-            currentFilter = cat;
-            // Gérer le style visuel des boutons
-            document.querySelectorAll('.category-chip').forEach(btn => {
-                btn.classList.remove('chip-active');
-                if(btn.innerText.toLowerCase() === cat.toLowerCase() || (cat === 'all' && btn.innerText === 'TOUT')) {
-                    btn.classList.add('chip-active');
-                }
-            });
-            loadDressing();
-        }
-
-        function loadDressing() {
-            let query = db.collection("clothes").orderBy("date", "desc");
-            
-            // Appliquer le filtre si ce n'est pas "Tout"
-            if (currentFilter !== "all") {
-                query = db.collection("clothes").where("category", "==", currentFilter);
+        // --- AUTH ---
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('app-view').classList.remove('hidden');
+                document.getElementById('app-view').classList.add('flex');
+                loadData();
+            } else {
+                document.getElementById('auth-view').classList.remove('hidden');
+                document.getElementById('app-view').classList.add('hidden');
+                document.getElementById('app-view').classList.remove('flex');
             }
+        });
+        async function login() { try { await auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } catch(e){alert(e.message);} }
+        async function register() { try { await auth.createUserWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } catch(e){alert(e.message);} }
 
-            query.onSnapshot(snap => {
-                const grid = document.getElementById('view-closet');
-                grid.innerHTML = snap.docs.map(doc => `
-                    <div class="card overflow-hidden anim-entry">
-                        <img src="${doc.data().image}" class="w-full h-48 object-cover">
-                        <div class="p-3">
-                            <div class="text-[7px] opacity-50 uppercase">${doc.data().category}</div>
-                            <div class="text-[10px] font-bold uppercase truncate">${doc.data().name}</div>
-                            <button onclick="deleteItem('${doc.id}')" class="mt-2 text-[8px] opacity-30 hover:opacity-100 transition">Supprimer</button>
-                        </div>
-                    </div>
-                `).join('');
-                
-                if (snap.empty) {
-                    grid.innerHTML = `<div class="col-span-2 text-center py-10 opacity-30 text-xs uppercase">Rien dans cette catégorie</div>`;
-                }
+        // --- NAVIGATION ---
+        function switchTab(tab, btn) {
+            ['events', 'chat', 'history'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
+            document.getElementById('tab-'+tab).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('nav-active'));
+            btn.classList.add('nav-active');
+            if(tab === 'chat') setTimeout(() => { const b = document.getElementById('chat-box'); b.scrollTop = b.scrollHeight; }, 100);
+        }
+
+        // --- LOGIC ---
+        async function createEvent() {
+            const name = document.getElementById('event-name').value;
+            if(!name) return;
+            await db.collection('events').add({ name: name, creator: currentUser.email.split('@')[0], archived: false, date: Date.now() });
+            document.getElementById('event-name').value = "";
+        }
+
+        function loadData() {
+            db.collection('events').orderBy('date', 'desc').onSnapshot(snap => {
+                const al = document.getElementById('events-list');
+                const hl = document.getElementById('history-list');
+                al.innerHTML = ""; hl.innerHTML = "";
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const html = `<div onclick="openModal('${doc.id}', '${d.name}')" class="bg-white/5 p-4 rounded-2xl border border-white/5 cursor-pointer active:scale-95 transition"><div class="flex justify-between items-center"><h3 class="font-bold text-lg capitalize">${d.name}</h3><span class="text-xs opacity-50">➔</span></div><p class="text-[10px] opacity-40 mt-1 uppercase font-bold">Par ${d.creator}</p></div>`;
+                    if(d.archived) hl.innerHTML += html; else al.innerHTML += html;
+                });
+            });
+            db.collection('chat').orderBy('date', 'asc').limit(50).onSnapshot(snap => {
+                const box = document.getElementById('chat-box');
+                box.innerHTML = snap.docs.map(doc => {
+                    const isMe = doc.data().email === currentUser.email;
+                    return `<div class="chat-bubble ${isMe ? 'me' : 'her'}">${!isMe ? `<div class="text-[9px] font-bold opacity-50 mb-1 uppercase text-pink-300">${doc.data().user}</div>` : ''}${doc.data().text}</div>`;
+                }).join('');
+                box.scrollTop = box.scrollHeight;
             });
         }
-        
-        async function deleteItem(id) { if(confirm("Supprimer cet article ?")) await db.collection("clothes").doc(id).delete(); }
 
-        loadDressing();
+        async function sendMsg() {
+            const inp = document.getElementById('msg-input');
+            if(!inp.value) return;
+            await db.collection('chat').add({ text: inp.value, user: currentUser.email.split('@')[0], email: currentUser.email, date: Date.now() });
+            inp.value = "";
+        }
+
+        function openModal(id, name) {
+            currentEventId = id;
+            document.getElementById('modal-title').innerText = name;
+            document.getElementById('modal-event').classList.remove('hidden');
+            db.collection('events').doc(id).collection('inspos').orderBy('date', 'desc').onSnapshot(snap => {
+                const g = document.getElementById('inspo-grid');
+                if(snap.empty) g.innerHTML = "<p class='col-span-2 text-center opacity-30 text-xs mt-10'>Aucune inspo...</p>";
+                else g.innerHTML = snap.docs.map(doc => `<div class="relative group h-40 bg-white/5 rounded-xl overflow-hidden"><img src="${doc.data().url}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/400?text=Lien+Invalide'"><button onclick="deleteInspo('${doc.id}')" class="absolute top-1 right-1 bg-black/60 w-6 h-6 rounded-full flex items-center justify-center text-[10px]">✕</button></div>`).join('');
+            });
+        }
+        function closeModal() { document.getElementById('modal-event').classList.add('hidden'); }
+        async function addInspo() {
+            const url = document.getElementById('inspo-link').value;
+            if(!url) return;
+            await db.collection('events').doc(currentEventId).collection('inspos').add({ url: url, date: Date.now() });
+            document.getElementById('inspo-link').value = "";
+        }
+        async function deleteInspo(id) { if(confirm('Supprimer ?')) await db.collection('events').doc(currentEventId).collection('inspos').doc(id).delete(); }
+        async function archiveEvent() { if(confirm('Archiver cet événement ?')) { await db.collection('events').doc(currentEventId).update({ archived: true }); closeModal(); } }
     </script>
 </body>
 </html>
