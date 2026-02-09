@@ -7,7 +7,6 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -32,12 +31,12 @@
         .nav-active { color: var(--primary); opacity: 1 !important; transform: translateY(-5px); }
         .nav-active::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: var(--primary); filter: blur(15px); border-radius: 50%; }
 
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .anim-entry { animation: fadeUp 0.4s ease-out forwards; }
-        
-        .category-chip { padding: 8px 16px; border-radius: 99px; background: rgba(255,255,255,0.05); font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; transition: 0.3s; }
+        .category-chip { padding: 8px 16px; border-radius: 99px; background: rgba(255,255,255,0.05); font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; transition: 0.3s; cursor: pointer; }
         .chip-active { background: var(--primary); color: #000; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .anim-entry { animation: fadeUp 0.4s ease-out forwards; }
     </style>
 </head>
 <body>
@@ -56,12 +55,12 @@
         </div>
     </header>
 
-    <main class="view-container p-5 space-y-6">
+    <main class="view-container p-5">
         
         <section id="view-closet" class="anim-entry">
             <div id="dressing-grid" class="grid grid-cols-2 gap-4">
-                <div class="col-span-2 text-center py-20 opacity-30 text-[10px] font-bold uppercase tracking-widest">
-                    Ton dressing est vide...
+                <div class="col-span-2 text-center py-20 opacity-30 text-[10px] font-bold uppercase tracking-widest italic">
+                    Chargement du dressing...
                 </div>
             </div>
         </section>
@@ -70,27 +69,27 @@
             <div class="card p-6 space-y-5 border-t-4 border-pink-500">
                 <h2 class="text-sm font-black uppercase tracking-widest text-pink-500">Ajouter une pépite</h2>
                 
-                <div id="drop-zone" onclick="document.getElementById('file-input').click()" class="w-full h-72 card border-dashed border-2 border-white/10 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
-                    <input type="file" id="file-input" class="hidden" accept="image/*" onchange="previewImage(event)">
-                    <div id="preview-placeholder" class="text-center">
-                        <span class="text-5xl block">📸</span>
-                        <p class="text-[10px] font-black uppercase mt-3 opacity-40">Prendre en photo / Upload</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[10px] font-black uppercase opacity-40 ml-1">Nom de l'article</label>
+                        <input type="text" id="item-name" placeholder="EX: TOP ZARA BLEU" class="w-full p-4 text-xs font-bold uppercase tracking-wider">
                     </div>
-                    <img id="img-preview" class="hidden w-full h-full object-cover">
-                </div>
-
-                <div class="space-y-3">
-                    <label class="text-[10px] font-black uppercase opacity-40 ml-1">Nom de l'article</label>
-                    <input type="text" id="item-name" placeholder="EX: TOP ZARA BLEU" class="w-full p-4 text-xs font-bold uppercase tracking-wider">
                     
-                    <label class="text-[10px] font-black uppercase opacity-40 ml-1">Catégorie</label>
-                    <select id="item-category" class="w-full p-4 text-xs font-bold uppercase">
-                        <option value="Hauts">👕 Hauts</option>
-                        <option value="Bas">👖 Bas</option>
-                        <option value="Robes">👗 Robes</option>
-                        <option value="Chaussures">👟 Chaussures</option>
-                        <option value="Accessoires">👜 Accessoires</option>
-                    </select>
+                    <div>
+                        <label class="text-[10px] font-black uppercase opacity-40 ml-1">Lien de la photo (URL)</label>
+                        <input type="text" id="item-url" placeholder="COLLE LE LIEN PINTEREST/GOOGLE ICI" class="w-full p-4 text-xs font-bold uppercase tracking-wider">
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black uppercase opacity-40 ml-1">Catégorie</label>
+                        <select id="item-category" class="w-full p-4 text-xs font-bold uppercase">
+                            <option value="Hauts">👕 Hauts</option>
+                            <option value="Bas">👖 Bas</option>
+                            <option value="Robes">👗 Robes</option>
+                            <option value="Chaussures">👟 Chaussures</option>
+                            <option value="Accessoires">👜 Accessoires</option>
+                        </select>
+                    </div>
                 </div>
 
                 <button onclick="uploadItem()" id="btn-save" class="w-full py-5 rounded-2xl font-black uppercase text-xs shadow-lg bg-pink-500 text-black active:scale-95 transition tracking-widest">
@@ -115,7 +114,7 @@
     </nav>
 
     <script>
-        // CONFIGURATION AVEC TES CLÉS
+        // CONFIGURATION FIREBASE (TES CLÉS)
         const firebaseConfig = {
           apiKey: "AIzaSyBIHjJKZj_Bqw1XjHfJo4X3GWrA6GNLU8I",
           authDomain: "bu-buddy-4bafe.firebaseapp.com",
@@ -127,10 +126,10 @@
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const storage = firebase.storage();
 
         let currentFilter = 'all';
 
+        // NAVIGATION
         function nav(view, btn) {
             document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
             document.getElementById('view-' + view).classList.remove('hidden');
@@ -138,17 +137,7 @@
             btn.classList.add('nav-active'); btn.classList.remove('opacity-40');
         }
 
-        function previewImage(event) {
-            const reader = new FileReader();
-            reader.onload = function(){
-                const output = document.getElementById('img-preview');
-                output.src = reader.result;
-                output.classList.remove('hidden');
-                document.getElementById('preview-placeholder').classList.add('hidden');
-            };
-            reader.readAsDataURL(event.target.files[0]);
-        }
-
+        // FILTRAGE
         function filterItems(cat) {
             currentFilter = cat;
             document.querySelectorAll('.category-chip').forEach(c => {
@@ -158,22 +147,19 @@
             loadDressing();
         }
 
+        // AJOUTER UN ARTICLE
         async function uploadItem() {
-            const file = document.getElementById('file-input').files[0];
             const name = document.getElementById('item-name').value;
+            const url = document.getElementById('item-url').value;
             const category = document.getElementById('item-category').value;
             const btn = document.getElementById('btn-save');
 
-            if(!file || !name) return alert("Photo et nom manquants !");
+            if(!name || !url) return alert("Nom et lien d'image obligatoires !");
 
             btn.disabled = true;
-            btn.innerText = "CHARGEMENT...";
+            btn.innerText = "ENREGISTREMENT...";
 
             try {
-                const ref = storage.ref(`dressing/${Date.now()}_${file.name}`);
-                const snap = await ref.put(file);
-                const url = await snap.ref.getDownloadURL();
-
                 await db.collection("clothes").add({
                     name: name,
                     category: category,
@@ -182,15 +168,19 @@
                 });
 
                 alert("C'est dans le dressing ! ✨");
-                location.reload();
+                // Reset formulaire et retour vue dressing
+                document.getElementById('item-name').value = "";
+                document.getElementById('item-url').value = "";
+                nav('closet', document.querySelectorAll('.nav-item')[0]);
             } catch (e) {
                 console.error(e);
-                alert("Erreur. Vérifie les règles de sécurité Firestore/Storage.");
+                alert("Erreur ! Vérifie tes règles Firestore.");
                 btn.disabled = false;
                 btn.innerText = "RÉESSAYER";
             }
         }
 
+        // CHARGEMENT EN TEMPS RÉEL
         function loadDressing() {
             let query = db.collection("clothes").orderBy("date", "desc");
             if(currentFilter !== 'all') query = query.where("category", "==", currentFilter);
@@ -198,7 +188,7 @@
             query.onSnapshot(snapshot => {
                 const grid = document.getElementById('dressing-grid');
                 if(snapshot.empty) {
-                    grid.innerHTML = `<div class="col-span-2 text-center py-20 opacity-30 text-[10px] font-bold uppercase tracking-widest italic">Aucun vêtement ici</div>`;
+                    grid.innerHTML = `<div class="col-span-2 text-center py-20 opacity-30 text-[10px] font-bold uppercase tracking-widest italic">Ton dressing est vide</div>`;
                     return;
                 }
 
@@ -209,8 +199,8 @@
                             <div class="absolute top-2 right-2 z-10">
                                 <button onclick="deleteItem('${doc.id}')" class="bg-black/50 p-2 rounded-full text-[10px] backdrop-blur-md">❌</button>
                             </div>
-                            <img src="${d.image}" class="w-full h-56 object-cover bg-slate-800">
-                            <div class="p-4 bg-slate-900/40">
+                            <img src="${d.image}" class="w-full h-56 object-cover bg-slate-800 shadow-inner" onerror="this.src='https://via.placeholder.com/300x400?text=Image+Introuvable'">
+                            <div class="p-4 bg-slate-900/40 border-t border-white/5">
                                 <p class="text-[7px] font-black uppercase opacity-40 tracking-tighter">${d.category}</p>
                                 <p class="text-[10px] font-bold uppercase truncate tracking-wide">${d.name}</p>
                             </div>
@@ -226,6 +216,7 @@
             }
         }
 
+        // Lancement initial
         loadDressing();
     </script>
 </body>
