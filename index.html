@@ -15,19 +15,24 @@
         .glass { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05); }
         .card { background: linear-gradient(145deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; }
         .nav-active { color: var(--primary); transform: translateY(-5px); }
-        .category-chip { padding: 8px 16px; border-radius: 99px; background: rgba(255,255,255,0.05); font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; }
+        .category-chip { padding: 8px 16px; border-radius: 99px; background: rgba(255,255,255,0.05); font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
         .chip-active { background: var(--primary); color: #000; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
     <header class="glass sticky top-0 z-40 p-6 pb-4">
-        <h1 class="text-xl font-black uppercase italic italic">Lou's Dressing <span class="text-pink-500">.</span></h1>
-        <div class="flex gap-2 overflow-x-auto py-2 no-scrollbar">
+        <h1 class="text-xl font-black uppercase italic">Lou's Dressing <span class="text-pink-500">.</span></h1>
+        <div class="flex gap-2 overflow-x-auto py-2 no-scrollbar" id="filter-bar">
             <button onclick="filterItems('all')" class="category-chip chip-active">Tout</button>
             <button onclick="filterItems('Hauts')" class="category-chip">Hauts</button>
             <button onclick="filterItems('Bas')" class="category-chip">Bas</button>
+            <button onclick="filterItems('Robes')" class="category-chip">Robes</button>
+            <button onclick="filterItems('Ensembles')" class="category-chip">Ensembles</button>
             <button onclick="filterItems('Chaussures')" class="category-chip">Chaussures</button>
+            <button onclick="filterItems('Sacs')" class="category-chip">Sacs</button>
+            <button onclick="filterItems('Accessoires')" class="category-chip">Accessoires</button>
         </div>
     </header>
 
@@ -45,7 +50,11 @@
                 <select id="item-category" class="w-full p-4 bg-black/30 border border-white/10 rounded-xl text-xs font-bold uppercase">
                     <option value="Hauts">👕 Hauts</option>
                     <option value="Bas">👖 Bas</option>
+                    <option value="Robes">👗 Robes</option>
+                    <option value="Ensembles">👯 Ensembles</option>
                     <option value="Chaussures">👟 Chaussures</option>
+                    <option value="Sacs">👜 Sacs</option>
+                    <option value="Accessoires">💍 Accessoires</option>
                 </select>
                 <button onclick="uploadItem()" id="btn-save" class="w-full py-5 rounded-2xl font-black bg-pink-500 text-black uppercase text-xs">Enregistrer</button>
             </div>
@@ -69,9 +78,10 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         let base64Image = "";
+        let currentFilter = "all";
 
         function nav(view, btn) {
-            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
             document.getElementById('view-' + view).classList.remove('hidden');
             document.querySelectorAll('nav button').forEach(b => b.classList.add('opacity-40'));
             btn.classList.remove('opacity-40');
@@ -101,20 +111,46 @@
             location.reload();
         }
 
+        function filterItems(cat) {
+            currentFilter = cat;
+            // Gérer le style visuel des boutons
+            document.querySelectorAll('.category-chip').forEach(btn => {
+                btn.classList.remove('chip-active');
+                if(btn.innerText.toLowerCase() === cat.toLowerCase() || (cat === 'all' && btn.innerText === 'TOUT')) {
+                    btn.classList.add('chip-active');
+                }
+            });
+            loadDressing();
+        }
+
         function loadDressing() {
-            db.collection("clothes").orderBy("date", "desc").onSnapshot(snap => {
+            let query = db.collection("clothes").orderBy("date", "desc");
+            
+            // Appliquer le filtre si ce n'est pas "Tout"
+            if (currentFilter !== "all") {
+                query = db.collection("clothes").where("category", "==", currentFilter);
+            }
+
+            query.onSnapshot(snap => {
                 const grid = document.getElementById('view-closet');
                 grid.innerHTML = snap.docs.map(doc => `
-                    <div class="card overflow-hidden">
+                    <div class="card overflow-hidden anim-entry">
                         <img src="${doc.data().image}" class="w-full h-48 object-cover">
-                        <div class="p-3 text-[10px] font-bold uppercase">${doc.data().name}</div>
-                        <button onclick="deleteItem('${doc.id}')" class="p-2 opacity-30 text-[8px]">Supprimer</button>
+                        <div class="p-3">
+                            <div class="text-[7px] opacity-50 uppercase">${doc.data().category}</div>
+                            <div class="text-[10px] font-bold uppercase truncate">${doc.data().name}</div>
+                            <button onclick="deleteItem('${doc.id}')" class="mt-2 text-[8px] opacity-30 hover:opacity-100 transition">Supprimer</button>
+                        </div>
                     </div>
                 `).join('');
+                
+                if (snap.empty) {
+                    grid.innerHTML = `<div class="col-span-2 text-center py-10 opacity-30 text-xs uppercase">Rien dans cette catégorie</div>`;
+                }
             });
         }
         
-        async function deleteItem(id) { if(confirm("Supprimer ?")) await db.collection("clothes").doc(id).delete(); }
+        async function deleteItem(id) { if(confirm("Supprimer cet article ?")) await db.collection("clothes").doc(id).delete(); }
 
         loadDressing();
     </script>
