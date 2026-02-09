@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LOU'S DRESSING</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        
+        :root { 
+            --bg: #020617; 
+            --card: #0f172a; 
+            --text: #f1f5f9; 
+            --primary: #ec4899; 
+        }
+
+        body { font-family: 'Outfit', sans-serif; background-color: var(--bg); color: var(--text); height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+        .safe-pt { padding-top: max(env(safe-area-inset-top), 20px); }
+        .safe-pb { padding-bottom: max(env(safe-area-inset-bottom), 90px); }
+        .view-container { flex: 1; overflow-y: auto; padding-bottom: 120px !important; scroll-behavior: smooth; }
+        .glass { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .card { background: linear-gradient(145deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; }
+        
+        input, select { background: rgba(0,0,0,0.3) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; outline: none; border-radius: 12px; }
+        .nav-item { transition: all 0.3s; position: relative; }
+        .nav-active { color: var(--primary); opacity: 1 !important; transform: translateY(-5px); }
+        .nav-active::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: var(--primary); filter: blur(15px); border-radius: 50%; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .anim-entry { animation: fadeUp 0.4s ease-out forwards; }
+        
+        .category-chip { padding: 8px 16px; border-radius: 99px; background: rgba(255,255,255,0.05); font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; transition: 0.3s; }
+        .chip-active { background: var(--primary); color: #000; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <header class="glass sticky top-0 z-40 safe-pt pb-4">
+        <div class="px-6 flex flex-col gap-2">
+            <h1 class="text-xl font-black tracking-tighter uppercase italic">Lou's Dressing <span class="text-pink-500">.</span></h1>
+            <div id="category-bar" class="flex gap-2 overflow-x-auto no-scrollbar py-2">
+                <button onclick="filterItems('all')" class="category-chip chip-active">Tout</button>
+                <button onclick="filterItems('Hauts')" class="category-chip">Hauts</button>
+                <button onclick="filterItems('Bas')" class="category-chip">Bas</button>
+                <button onclick="filterItems('Robes')" class="category-chip">Robes</button>
+                <button onclick="filterItems('Chaussures')" class="category-chip">Chaussures</button>
+                <button onclick="filterItems('Accessoires')" class="category-chip">Accessoires</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="view-container p-5 space-y-6">
+        
+        <section id="view-closet" class="anim-entry">
+            <div id="dressing-grid" class="grid grid-cols-2 gap-4">
+                <div class="col-span-2 text-center py-20 opacity-30 text-[10px] font-bold uppercase tracking-widest">
+                    Ton dressing est vide...
+                </div>
+            </div>
+        </section>
+
+        <section id="view-add" class="hidden space-y-6 anim-entry">
+            <div class="card p-6 space-y-5 border-t-4 border-pink-500">
+                <h2 class="text-sm font-black uppercase tracking-widest text-pink-500">Ajouter une pépite</h2>
+                
+                <div id="drop-zone" onclick="document.getElementById('file-input').click()" class="w-full h-72 card border-dashed border-2 border-white/10 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
+                    <input type="file" id="file-input" class="hidden" accept="image/*" onchange="previewImage(event)">
+                    <div id="preview-placeholder" class="text-center">
+                        <span class="text-5xl block">📸</span>
+                        <p class="text-[10px] font-black uppercase mt-3 opacity-40">Prendre en photo / Upload</p>
+                    </div>
+                    <img id="img-preview" class="hidden w-full h-full object-cover">
+                </div>
+
+                <div class="space-y-3">
+                    <label class="text-[10px] font-black uppercase opacity-40 ml-1">Nom de l'article</label>
+                    <input type="text" id="item-name" placeholder="EX: TOP ZARA BLEU" class="w-full p-4 text-xs font-bold uppercase tracking-wider">
+                    
+                    <label class="text-[10px] font-black uppercase opacity-40 ml-1">Catégorie</label>
+                    <select id="item-category" class="w-full p-4 text-xs font-bold uppercase">
+                        <option value="Hauts">👕 Hauts</option>
+                        <option value="Bas">👖 Bas</option>
+                        <option value="Robes">👗 Robes</option>
+                        <option value="Chaussures">👟 Chaussures</option>
+                        <option value="Accessoires">👜 Accessoires</option>
+                    </select>
+                </div>
+
+                <button onclick="uploadItem()" id="btn-save" class="w-full py-5 rounded-2xl font-black uppercase text-xs shadow-lg bg-pink-500 text-black active:scale-95 transition tracking-widest">
+                    Ajouter au dressing
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <nav class="glass fixed bottom-0 w-full z-50 safe-pb border-t border-white/5">
+        <div class="grid grid-cols-2 py-2">
+            <button onclick="nav('closet', this)" class="nav-item nav-active flex flex-col items-center p-2">
+                <span class="text-xl mb-1">👗</span>
+                <span class="text-[8px] font-black uppercase tracking-widest">Dressing</span>
+            </button>
+            <button onclick="nav('add', this)" class="nav-item flex flex-col items-center opacity-40 p-2">
+                <span class="text-xl mb-1">➕</span>
+                <span class="text-[8px] font-black uppercase tracking-widest">Ajouter</span>
+            </button>
+        </div>
+    </nav>
+
+    <script>
+        // CONFIGURATION AVEC TES CLÉS
+        const firebaseConfig = {
+          apiKey: "AIzaSyBIHjJKZj_Bqw1XjHfJo4X3GWrA6GNLU8I",
+          authDomain: "bu-buddy-4bafe.firebaseapp.com",
+          projectId: "bu-buddy-4bafe",
+          storageBucket: "bu-buddy-4bafe.firebasestorage.app",
+          messagingSenderId: "1083707246516",
+          appId: "1:1083707246516:web:c6c78c199c7eb9323554e1"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        let currentFilter = 'all';
+
+        function nav(view, btn) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.getElementById('view-' + view).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(n => { n.classList.remove('nav-active'); n.classList.add('opacity-40'); });
+            btn.classList.add('nav-active'); btn.classList.remove('opacity-40');
+        }
+
+        function previewImage(event) {
+            const reader = new FileReader();
+            reader.onload = function(){
+                const output = document.getElementById('img-preview');
+                output.src = reader.result;
+                output.classList.remove('hidden');
+                document.getElementById('preview-placeholder').classList.add('hidden');
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+
+        function filterItems(cat) {
+            currentFilter = cat;
+            document.querySelectorAll('.category-chip').forEach(c => {
+                c.classList.remove('chip-active');
+                if(c.getAttribute('onclick').includes("'"+cat+"'")) c.classList.add('chip-active');
+            });
+            loadDressing();
+        }
+
+        async function uploadItem() {
+            const file = document.getElementById('file-input').files[0];
+            const name = document.getElementById('item-name').value;
+            const category = document.getElementById('item-category').value;
+            const btn = document.getElementById('btn-save');
+
+            if(!file || !name) return alert("Photo et nom manquants !");
+
+            btn.disabled = true;
+            btn.innerText = "CHARGEMENT...";
+
+            try {
+                const ref = storage.ref(`dressing/${Date.now()}_${file.name}`);
+                const snap = await ref.put(file);
+                const url = await snap.ref.getDownloadURL();
+
+                await db.collection("clothes").add({
+                    name: name,
+                    category: category,
+                    image: url,
+                    date: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert("C'est dans le dressing ! ✨");
+                location.reload();
+            } catch (e) {
+                console.error(e);
+                alert("Erreur. Vérifie les règles de sécurité Firestore/Storage.");
+                btn.disabled = false;
+                btn.innerText = "RÉESSAYER";
+            }
+        }
+
+        function loadDressing() {
+            let query = db.collection("clothes").orderBy("date", "desc");
+            if(currentFilter !== 'all') query = query.where("category", "==", currentFilter);
+
+            query.onSnapshot(snapshot => {
+                const grid = document.getElementById('dressing-grid');
+                if(snapshot.empty) {
+                    grid.innerHTML = `<div class="col-span-2 text-center py-20 opacity-30 text-[10px] font-bold uppercase tracking-widest italic">Aucun vêtement ici</div>`;
+                    return;
+                }
+
+                grid.innerHTML = snapshot.docs.map(doc => {
+                    const d = doc.data();
+                    return `
+                        <div class="card overflow-hidden anim-entry flex flex-col group relative">
+                            <div class="absolute top-2 right-2 z-10">
+                                <button onclick="deleteItem('${doc.id}')" class="bg-black/50 p-2 rounded-full text-[10px] backdrop-blur-md">❌</button>
+                            </div>
+                            <img src="${d.image}" class="w-full h-56 object-cover bg-slate-800">
+                            <div class="p-4 bg-slate-900/40">
+                                <p class="text-[7px] font-black uppercase opacity-40 tracking-tighter">${d.category}</p>
+                                <p class="text-[10px] font-bold uppercase truncate tracking-wide">${d.name}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            });
+        }
+
+        async function deleteItem(id) {
+            if(confirm("Supprimer cet article ?")) {
+                await db.collection("clothes").doc(id).delete();
+            }
+        }
+
+        loadDressing();
+    </script>
+</body>
+</html>
